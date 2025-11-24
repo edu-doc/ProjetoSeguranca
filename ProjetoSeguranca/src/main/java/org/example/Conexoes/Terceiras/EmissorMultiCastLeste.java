@@ -11,20 +11,25 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.*;
-import java.util.Random;
 
 public class EmissorMultiCastLeste {
-
-    // Substitua estas chaves públicas pelas geradas pelo ReceptorMultiCast
-    private static final BigInteger P_RECEPTOR = new BigInteger("11532775598390292398132118308764085338468577546980132536949166671840104386366473693488801697250131319502765314846158869746251977588720802101567884963484209");
-    private static final BigInteger G_RECEPTOR = BigInteger.valueOf(2);
-    private static final BigInteger Y_RECEPTOR = new BigInteger("11419909402129921603482256407168624297905321967635200545486192544166051891821708694781031451651266556483419045694500855173778900984136206913681096564155226");
 
     private static final String POSICAO = "Leste";
     private static final String SEPARADOR = ","; // Separador para Leste
     private static final int DELAY_MS = 2500;
 
     public static void main(String[] args) {
+
+        if (args.length < 3) {
+            System.err.println("Uso: java EmissorMultiCastLeste <P_RECEPTOR> <G_RECEPTOR> <Y_RECEPTOR>");
+            return;
+        }
+
+        // Injeção de Chaves via Argumentos
+        BigInteger P_RECEPTOR = new BigInteger(args[0]);
+        BigInteger G_RECEPTOR = new BigInteger(args[1]);
+        BigInteger Y_RECEPTOR = new BigInteger(args[2]);
+
         String apiUrl = "http://localhost:8081/api/sensores/dados/" + POSICAO;
         String multicastIp = "224.0.0.1";
         int porta = 55554;
@@ -36,7 +41,7 @@ public class EmissorMultiCastLeste {
             ImplElGamal elGamalSender = new ImplElGamal(P_RECEPTOR, G_RECEPTOR, Y_RECEPTOR);
 
             while (true) {
-                String dadosAbertos = buscarDadosDaAPI(apiUrl);
+                String dadosAbertos = buscarDadosDaAPI(apiUrl, SEPARADOR);
 
                 SecretKeySpec aesKey = gerarAESKey();
                 byte[] hmacKey = gerarHmacKey();
@@ -75,7 +80,7 @@ public class EmissorMultiCastLeste {
         }
     }
 
-    private static String buscarDadosDaAPI(String urlString) {
+    private static String buscarDadosDaAPI(String urlString, String separador) {
         StringBuilder resposta = new StringBuilder();
         try {
             URL url = new URL(urlString);
@@ -90,14 +95,12 @@ public class EmissorMultiCastLeste {
                     }
                 }
             } else {
-                // Fallback para 12 campos zerados
-                resposta.append("0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0");
+                resposta.append("0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0");
             }
 
             conexao.disconnect();
         } catch (IOException e) {
-            // Fallback para 12 campos zerados
-            resposta.append("0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0");
+            resposta.append("0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0");
         }
 
         return resposta.toString();

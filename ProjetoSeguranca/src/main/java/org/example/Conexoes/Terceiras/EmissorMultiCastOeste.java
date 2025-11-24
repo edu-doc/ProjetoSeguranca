@@ -11,20 +11,25 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.*;
-import java.util.Random;
 
 public class EmissorMultiCastOeste {
-
-    // Substitua estas chaves públicas pelas geradas pelo ReceptorMultiCast
-    private static final BigInteger P_RECEPTOR = new BigInteger("17142135118797968536098059040003714213511879796853609805904000371421351187979685360980590400037");
-    private static final BigInteger G_RECEPTOR = BigInteger.valueOf(2);
-    private static final BigInteger Y_RECEPTOR = new BigInteger("891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253545556575859");
 
     private static final String POSICAO = "Oeste";
     private static final String SEPARADOR = "#"; // Separador para Oeste
     private static final int DELAY_MS = 2500;
 
     public static void main(String[] args) {
+
+        if (args.length < 3) {
+            System.err.println("Uso: java EmissorMultiCastOeste <P_RECEPTOR> <G_RECEPTOR> <Y_RECEPTOR>");
+            return;
+        }
+
+        // Injeção de Chaves via Argumentos
+        BigInteger P_RECEPTOR = new BigInteger(args[0]);
+        BigInteger G_RECEPTOR = new BigInteger(args[1]);
+        BigInteger Y_RECEPTOR = new BigInteger(args[2]);
+
         String apiUrl = "http://localhost:8081/api/sensores/dados/" + POSICAO;
         String multicastIp = "224.0.0.1";
         int porta = 55554;
@@ -36,7 +41,7 @@ public class EmissorMultiCastOeste {
             ImplElGamal elGamalSender = new ImplElGamal(P_RECEPTOR, G_RECEPTOR, Y_RECEPTOR);
 
             while (true) {
-                String dadosAbertos = buscarDadosDaAPI(apiUrl);
+                String dadosAbertos = buscarDadosDaAPI(apiUrl, SEPARADOR);
 
                 SecretKeySpec aesKey = gerarAESKey();
                 byte[] hmacKey = gerarHmacKey();
@@ -75,7 +80,7 @@ public class EmissorMultiCastOeste {
         }
     }
 
-    private static String buscarDadosDaAPI(String urlString) {
+    private static String buscarDadosDaAPI(String urlString, String separador) {
         StringBuilder resposta = new StringBuilder();
         try {
             URL url = new URL(urlString);
@@ -90,14 +95,12 @@ public class EmissorMultiCastOeste {
                     }
                 }
             } else {
-                // Fallback para 12 campos zerados
-                resposta.append("0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0");
+                resposta.append("0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0");
             }
 
             conexao.disconnect();
         } catch (IOException e) {
-            // Fallback para 12 campos zerados
-            resposta.append("0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0" + SEPARADOR + "0");
+            resposta.append("0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0" + separador + "0");
         }
 
         return resposta.toString();
