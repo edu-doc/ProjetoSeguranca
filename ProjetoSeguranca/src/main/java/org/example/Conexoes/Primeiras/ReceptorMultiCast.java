@@ -16,7 +16,6 @@ import javax.crypto.spec.SecretKeySpec;
 
 public class ReceptorMultiCast {
 
-    // Chave ElGamal de Longo Prazo do Receptor (Borda)
     private static ImplElGamal elGamalReceiver;
 
     public static void main(String[] args) throws IOException {
@@ -24,8 +23,13 @@ public class ReceptorMultiCast {
         // 1. INICIALIZAÇÃO ELGAMAL (Gera o par de chaves Privada/Pública)
         elGamalReceiver = new ImplElGamal();
         System.out.println("--- Borda (Receptor) Inicializado ---");
-        System.out.println("Chave Pública ElGamal: P=" + elGamalReceiver.getP().toString().substring(0, 10) + "..., G=" + elGamalReceiver.getG() + ", Y=" + elGamalReceiver.getY().toString().substring(0, 10) + "...");
-        System.out.println("Chave Privada ElGamal (X) pronta para decifragem.");
+
+        // Versão completa das chaves para fácil cópia (REQUER COPIAR ESSES VALORES PARA OS 4 EMISSORES)
+        System.out.println("--- CHAVES PÚBLICAS (COPIAR PARA EMISSORES) ---");
+        System.out.println("P_RECEPTOR: " + elGamalReceiver.getP().toString());
+        System.out.println("G_RECEPTOR: " + elGamalReceiver.getG().toString());
+        System.out.println("Y_RECEPTOR: " + elGamalReceiver.getY().toString());
+        System.out.println("----------------------------------------------");
 
         int porta = 55554;
         String mensagem = "";
@@ -33,6 +37,7 @@ public class ReceptorMultiCast {
         MulticastSocket ms = new MulticastSocket(porta);
         InetAddress multicastIP = InetAddress.getByName("224.0.0.1");
         InetSocketAddress grupo = new InetSocketAddress(multicastIP, porta);
+        // **ATENÇÃO:** Mantenha ou corrija para a sua interface de rede local (ex: "ethernet_32768")
         NetworkInterface interfaceRede = NetworkInterface.getByName("wireless_32768");
 
         ms.joinGroup(grupo, interfaceRede);
@@ -58,9 +63,6 @@ public class ReceptorMultiCast {
     static List<Double> numeros;
 
     public static void formatarMensagem(String mensagem) {
-        // Formato esperado: c1|c2|HMAC|CIPHERTEXT|SEPARADOR|POSICAO
-
-        // Os 4 primeiros campos são grandes (BigInteger ou Base64), os 2 últimos são pequenos (String)
         String[] partesPrincipais = mensagem.split("\\|", 6);
 
         if (partesPrincipais.length != 6) {
@@ -76,27 +78,40 @@ public class ReceptorMultiCast {
             CifraElGamal cifraElGamal = new CifraElGamal(c1, c2);
             BigInteger chaveSimetricaBigInt = elGamalReceiver.decifrar(cifraElGamal);
 
-            // --- 2. RECUPERAR CHAVES AES E HMAC ---
-            byte[] chaveSimetricaCompleta = chaveSimetricaBigInt.toByteArray();
-
-            if (chaveSimetricaCompleta[0] == 0) {
-                byte[] temp = new byte[chaveSimetricaCompleta.length - 1];
-                System.arraycopy(chaveSimetricaCompleta, 1, temp, 0, temp.length);
-                chaveSimetricaCompleta = temp;
-            }
+            // --- 2. RECUPERAR CHAVES AES E HMAC (Extração Robusta) ---
+            byte[] chaveDecifradaCompleta = chaveSimetricaBigInt.toByteArray();
 
             int aesLength = 16;
             int hmacLength = 32;
+            int totalKeySize = aesLength + hmacLength; // 48 bytes esperados
 
-            if (chaveSimetricaCompleta.length != aesLength + hmacLength) {
-                throw new SecurityException("Chave simétrica decifrada com tamanho inválido. Tam: " + chaveSimetricaCompleta.length);
+            // Se o tamanho não for o esperado (provavelmente 64 bytes devido ao padding do BigInteger)
+            if (chaveDecifradaCompleta.length != totalKeySize) {
+
+                if (chaveDecifradaCompleta.length < totalKeySize) {
+                    throw new SecurityException("Chave decifrada muito curta. Tam: " + chaveDecifradaCompleta.length);
+                }
+
+                // Calcula o índice de onde a chave real de 48 bytes começa (ignorando os zeros/padding no início)
+                int startIndex = chaveDecifradaCompleta.length - totalKeySize;
+
+                // Copia os 48 bytes de chave reais (os últimos 48 bytes)
+                byte[] chaveReal = new byte[totalKeySize];
+                System.arraycopy(chaveDecifradaCompleta, startIndex, chaveReal, 0, totalKeySize);
+                chaveDecifradaCompleta = chaveReal;
             }
 
+            // Verificação final (deve ser 48 bytes)
+            if (chaveDecifradaCompleta.length != totalKeySize) {
+                throw new SecurityException("Chave simétrica decifrada com tamanho inválido após ajuste. Tam: " + chaveDecifradaCompleta.length + ". Esperado: " + totalKeySize);
+            }
+
+            // Separação das chaves
             byte[] aesKeyBytes = new byte[aesLength];
-            System.arraycopy(chaveSimetricaCompleta, 0, aesKeyBytes, 0, aesLength);
+            System.arraycopy(chaveDecifradaCompleta, 0, aesKeyBytes, 0, aesLength);
 
             byte[] hmacKeyBytes = new byte[hmacLength];
-            System.arraycopy(chaveSimetricaCompleta, aesLength, hmacKeyBytes, 0, hmacLength);
+            System.arraycopy(chaveDecifradaCompleta, aesLength, hmacKeyBytes, 0, hmacLength);
 
             SecretKey aesKey = new SecretKeySpec(aesKeyBytes, "AES");
 
@@ -131,7 +146,6 @@ public class ReceptorMultiCast {
             return;
         }
 
-        // Limpa a lista de números e começa a parsear
         numeros = new ArrayList<>();
 
         // Recuperação dos 12 números
