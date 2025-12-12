@@ -9,27 +9,23 @@ import java.security.SecureRandom;
 import java.net.*;
 
 public class EmissorComprometido {
-    // Mesma estrutura dos outros, mas dados hardcoded maliciosos
-    private static final String POSICAO = "Norte"; // Dispositivo do Norte foi comprometido
+    private static final String POSICAO = "Norte";
     private static final String SEPARADOR = "-";
 
     public static void main(String[] args) {
-        if (args.length < 3) return;
-        BigInteger P = new BigInteger(args[0]);
-        BigInteger G = new BigInteger(args[1]);
-        BigInteger Y = new BigInteger(args[2]);
 
         try (MulticastSocket socket = new MulticastSocket()) {
             InetAddress group = InetAddress.getByName("224.0.0.1");
+            BigInteger P = new BigInteger("9865086851552036503315682554636903079707985892373600312724655915758623154281422326900625005654551209501515551132180364784669360100614782892964947832289671");
+            BigInteger G = new BigInteger("2");
+            BigInteger Y = new BigInteger("1714976399445342874895174603344547013980344827708006061751520305400433772657238699766687030490212628834276134023621660680477301272432873754479540518975126");
             ImplElGamal elGamal = new ImplElGamal(P, G, Y);
             
             System.out.println("😈 [EMISSOR COMPROMETIDO] Iniciando ataque de injeção de dados...");
 
             while (true) {
-                // GERA DADOS MALICIOSOS (Temperatura 999.0)
                 String dadosMaliciosos = "5000-50-50-50-50-50-999.0-50-200.0-50-0-0";
                 
-                // Processo normal de criptografia (para passar pela autenticação, mas falhar no conteúdo)
                 SecretKeySpec aesKey = gerarAESKey();
                 byte[] hmacKey = gerarHmacKey();
                 BigInteger keyPack = empacotarChaveSimetrica(aesKey.getEncoded(), hmacKey);
@@ -49,7 +45,6 @@ public class EmissorComprometido {
         } catch (Exception e) { e.printStackTrace(); }
     }
     
-    // (Copiar métodos auxiliares gerarAESKey, etc. dos outros emissores)
     private static SecretKeySpec gerarAESKey() {
         byte[] keyBytes = new byte[16]; new SecureRandom().nextBytes(keyBytes);
         return new SecretKeySpec(keyBytes, "AES");

@@ -22,22 +22,18 @@ public class ReceptorBorda {
 
     private static ImplElGamal elGamalReceiver;
     
-    // --- COMPONENTE: FIREWALL 1 (Filtro de Pacotes - Network Layer) ---
     private static Set<String> blacklist = new HashSet<>();
     
-    // Configurações do IDS
     private static final String IDS_HOST = "localhost";
     private static final int IDS_PORT = 6000;
 
     public static void main(String[] args) throws Exception {
-        // 1. Inicializa Criptografia Assimétrica (ElGamal)
         elGamalReceiver = new ImplElGamal();
         
         System.out.println("=== BORDA (DMZ) INICIADA ===");
         System.out.println("--- FIREWALL 1 (Filtro de Pacotes/Blacklist) ATIVO ---");
         System.out.println("--- PROXY FIREWALL (Inspeção de Aplicação) ATIVO ---");
         
-        // Exibe chaves públicas para configurar os emissores
         System.out.println("\n--- COPIE AS CHAVES ABAIXO PARA OS EMISSORES ---");
         System.out.println("P: " + elGamalReceiver.getP());
         System.out.println("G: " + elGamalReceiver.getG());
@@ -49,14 +45,12 @@ public class ReceptorBorda {
         InetAddress multicastIP = InetAddress.getByName("224.0.0.1");
         InetSocketAddress grupo = new InetSocketAddress(multicastIP, porta);
         
-        // Tenta pegar a interface de rede correta. Se der erro, tente pelo nome (ex: "wlan0", "eth0")
-        // NetworkInterface interfaceRede = NetworkInterface.getByName("nome_da_interface"); 
         NetworkInterface interfaceRede = NetworkInterface.getByInetAddress(InetAddress.getLocalHost());
         
         ms.joinGroup(grupo, interfaceRede);
         System.out.println("Receptor de Borda ouvindo em " + multicastIP.getHostAddress() + ":" + porta);
 
-        byte[] buffer = new byte[8192]; // Buffer grande para garantir recebimento completo
+        byte[] buffer = new byte[8192];
         DatagramPacket pacote = new DatagramPacket(buffer, buffer.length);
 
         while (true) {
@@ -64,13 +58,12 @@ public class ReceptorBorda {
             
             String rawData = new String(pacote.getData(), 0, pacote.getLength());
             
-            // Simula identificação do IP de origem baseada no conteúdo (já que é multicast local)
             String origem = identificarOrigem(rawData); 
             
             // --- CAMADA 1: FIREWALL DE FILTRO (Bloqueio de IP/Origem) ---
             if (blacklist.contains(origem)) {
                 System.out.println("🚫 [FIREWALL 1] Pacote DESCARTADO. Origem '" + origem + "' está na Blacklist.");
-                continue; // Ignora o pacote e volta para o início do loop
+                continue;
             }
 
             try {
@@ -82,7 +75,6 @@ public class ReceptorBorda {
     }
 
     private static String identificarOrigem(String rawData) {
-        // Como todos enviam para o mesmo IP multicast, usamos o ID no final da string para simular o IP
         if (rawData.contains("Norte")) return "Norte";
         if (rawData.contains("Sul")) return "Sul";
         if (rawData.contains("Leste")) return "Leste";
@@ -97,23 +89,18 @@ public class ReceptorBorda {
             return;
         }
 
-        // --- ETAPA 1: CRIPTOGRAFIA ASSIMÉTRICA (ElGamal) ---
-        // Decifra a chave de sessão que veio cifrada
         BigInteger c1 = new BigInteger(partes[0]);
         BigInteger c2 = new BigInteger(partes[1]);
         CifraElGamal cifra = new CifraElGamal(c1, c2);
         
         BigInteger chaveSimetricaBigInt = elGamalReceiver.decifrar(cifra);
         
-        // --- ETAPA 2: RECUPERAR CHAVES AES E HMAC (Lógica Robusta) ---
-        // Essa lógica trata o byte extra de sinal que o BigInteger pode adicionar
         byte[] chaveDecifradaCompleta = chaveSimetricaBigInt.toByteArray();
 
         int aesLength = 16;
         int hmacLength = 32;
-        int totalKeySize = aesLength + hmacLength; // 48 bytes
+        int totalKeySize = aesLength + hmacLength;
 
-        // Ajuste de array se houver bytes extras (padding de zero)
         if (chaveDecifradaCompleta.length != totalKeySize) {
             if (chaveDecifradaCompleta.length < totalKeySize) {
                 throw new SecurityException("Chave decifrada muito curta/inválida.");
@@ -131,32 +118,25 @@ public class ReceptorBorda {
 
         SecretKey aesKey = new SecretKeySpec(aesKeyBytes, "AES");
 
-        // --- ETAPA 3: CRIPTOGRAFIA SIMÉTRICA (AES + HMAC) ---
         Crypto crypto = new Crypto(aesKey, hmacKeyBytes);
         
-        // Decifra e valida integridade. Se HMAC falhar, lança exceção.
         String dadosAbertos = crypto.verificarEDecifrar(partes[2] + ":" + partes[3]);
         
-        // --- ETAPA 4: PARSING DOS DADOS (String -> DTO) ---
         String separador = partes[4];
         String posicao = partes[5];
         
-        // Converte a string "10.0-20.0-..." para objeto DroneDTO
         DroneDTO drone = parseDados(dadosAbertos, separador, posicao);
         
-        if (drone == null) return; // Falha no parsing
+        if (drone == null) return;
 
         try {
             // --- CAMADA 2: FIREWALL PROXY (Inspeção de Conteúdo) ---
-            // Verifica se os dados fazem sentido (Temperatura < 80, etc)
             FirewallProxy.inspecionarPacote(drone);
             
-            // --- ETAPA 5: SUCESSO - ENVIA PARA O DATACENTER (LAN) ---
             System.out.println("Pacote de " + posicao + " verificado e seguro. Enviando para persistência...");
             new CentralService().createDrone(drone);
             
         } catch (SecurityException e) {
-            // Se o Proxy pegar uma anomalia (ex: Temp 999.0 enviada pelo EmissorComprometido)
             System.err.println("🚨 ALERTA DE PROXY: " + e.getMessage());
             
             // Notifica o IDS para tomar providências (Bloquear IP)
@@ -166,7 +146,6 @@ public class ReceptorBorda {
 
     private static DroneDTO parseDados(String dados, String separador, String posicao) {
         try {
-            // Usa Pattern.quote para evitar erro se o separador for caractere especial regex (ex: | ou .)
             String[] v = dados.split(Pattern.quote(separador));
             
             if (v.length < 12) {
@@ -194,15 +173,13 @@ public class ReceptorBorda {
              PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
              BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
             
-            // Envia o alerta no formato esperado pelo IDS
             out.println(mensagemErro + ":Origem:" + origem);
             
-            // Lê a ordem do IDS (ex: "BLOCK:Norte" ou "ACK")
             String resposta = in.readLine();
             
             if (resposta != null && resposta.startsWith("BLOCK:")) {
                 String alvo = resposta.split(":")[1];
-                blacklist.add(alvo); // Adiciona na memória do Firewall 1
+                blacklist.add(alvo);
                 System.out.println("🔥 [FIREWALL 1] BLACKLIST ATUALIZADA: " + alvo + " foi bloqueado permanentemente.");
             }
             

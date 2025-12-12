@@ -13,29 +13,25 @@ import java.util.Scanner;
 
 public class ClienteParaServidor {
     private static final String SERVER_ADDRESS = "localhost";
-    private static final int LB_PORT = 22234; // Load Balancer Port
+    private static final int LB_PORT = 22234;
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    private String jwtToken = null; // Token de sessão
+    private String jwtToken = null;
 
     public void conexaoCentralServidor() {
 
-        // --- ETAPA 1: AUTENTICAÇÃO (LOGIN) ---
         if (!autenticarCliente(UserRepository.getValidUsername(), UserRepository.getValidPassword())) {
             System.out.println("Autenticação inicial falhou. Encerrando programa.");
             return;
         }
 
-        // --- ETAPA 2: REDIRECIONAMENTO ---
         int novaPorta = solicitarRedirecionamento();
         if (novaPorta != -1) {
-            // --- ETAPA 3: OPERAÇÕES NO SERVIDOR DE BORDA (DATACENTER) ---
             executarOperacoes(novaPorta);
         } else {
             System.out.println("Falha crítica ao obter porta de redirecionamento. Encerrando.");
         }
 
-        // --- ETAPA 4: SIMULAÇÃO DE FALHA (REQUISITO DO TRABALHO) ---
         simularAcessoInvalido();
     }
 
@@ -93,7 +89,6 @@ public class ClienteParaServidor {
     private void simularAcessoInvalido() {
         System.out.println("\n\n--- REQUISITO: SIMULAÇÃO DE ACESSO INVÁLIDO ---");
         System.out.println("Tentando LOGIN com credenciais inválidas (Dispositivo/Cliente Mal-intencionado)...");
-        // O Load Balancer rejeitará esta tentativa (ERRO_AUTH), cumprindo o requisito.
         autenticarCliente(UserRepository.getInvalidUsername(), UserRepository.getInvalidPassword());
     }
 
@@ -105,10 +100,9 @@ public class ClienteParaServidor {
                 ObjectOutputStream objOut = new ObjectOutputStream(novoSocket.getOutputStream());
                 ObjectInputStream objIn = new ObjectInputStream(novoSocket.getInputStream())
         ) {
-            // Identifica como Cliente e envia o token para validação no ImplServidorCliente
             objOut.writeUTF("Cliente");
             objOut.flush();
-            objOut.writeUTF(jwtToken); // Envia o JWT
+            objOut.writeUTF(jwtToken);
             objOut.flush();
 
             Scanner scanner = new Scanner(System.in);
@@ -123,7 +117,6 @@ public class ClienteParaServidor {
                     continue;
                 }
 
-                // Envia a opção escolhida
                 objOut.writeInt(opcao);
                 objOut.flush();
 
@@ -169,7 +162,6 @@ public class ClienteParaServidor {
                                 processarResposta(objIn);
                                 break;
 
-                            // --- NOVOS RELATÓRIOS (Nuvem/IA) ---
                             case 5: // Média Poluentes (Não precisa de dados de entrada)
                             case 6: // Tendência Temp (Não precisa de dados de entrada)
                             case 7: // Contagem Posição (Não precisa de dados de entrada)
@@ -217,11 +209,10 @@ public class ClienteParaServidor {
                 System.out.println("Nenhum dado/relatório encontrado.");
             } else {
                 for (Object o : lista) {
-                    // Trata lista de Drones ou lista de Strings (Pontos Críticos)
                     if (o instanceof Drone) {
                         System.out.println(o);
                     } else {
-                        System.out.println(o.toString()); // Lista de Strings
+                        System.out.println(o.toString());
                     }
                 }
             }
@@ -229,7 +220,6 @@ public class ClienteParaServidor {
             System.out.println("Relatório de Agregação:");
             ((Map<?,?>) resposta).forEach((k, v) -> System.out.println("- " + k + ": " + v));
         } else {
-            // Trata Strings (Alertas/Previsão)
             System.out.println("Relatório/Alerta: " + resposta.toString());
         }
         System.out.println("------------------------------------");

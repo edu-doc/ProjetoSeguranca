@@ -13,13 +13,10 @@ public class ServidorBanco {
         try {
             System.out.println("=== Iniciando Servidor do Banco de Drones ===");
             
-            // Criar instância do banco de dados
             ImplServidorBanco bancoDrones = new ImplServidorBanco();
 
-            // Criar registro RMI
             Registry registro = LocateRegistry.createRegistry(PORTA_RMI);
 
-            // Registrar o serviço
             registro.rebind(NOME_SERVICO, bancoDrones);
 
             System.out.println("Servidor do Banco de Drones iniciado na porta " + PORTA_RMI);

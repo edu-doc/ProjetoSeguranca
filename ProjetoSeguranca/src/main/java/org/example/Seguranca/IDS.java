@@ -38,16 +38,12 @@ public class IDS {
                 if (alerta != null) {
                     System.out.println("🚨 [IDS] ALERTA RECEBIDO: " + alerta);
                     
-                    // Lógica de Resposta a Incidentes
                     if (alerta.contains("VALOR_ANOMALO")) {
-                        // Exemplo de alerta: "VALOR_ANOMALO:Origem:Norte"
                         String[] parts = alerta.split(":");
-                        String origem = parts[2]; // Pega a posição/ID
-                        
+                        String origem = parts[2];
                         System.out.println("⚠️ [IDS] Detectada anomalia crítica de " + origem + ".");
                         System.out.println("🛡️ [IDS] Enviando comando de BLOQUEIO para o Firewall de Borda...");
                         
-                        // Responde ao solicitante (Borda) para bloquear
                         out.println("BLOCK:" + origem);
                     } else {
                         System.out.println("ℹ️ [IDS] Log registrado. Nenhuma ação de bloqueio imediata.");

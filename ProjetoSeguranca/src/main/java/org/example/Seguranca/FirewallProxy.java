@@ -4,13 +4,11 @@ import org.example.API.DTO.DroneDTO;
 
 public class FirewallProxy {
 
-    // Regras de negócio para detecção de anomalias (Signature/Anomaly Detection)
     private static final double MAX_TEMP = 80.0;
     private static final double MAX_CO2 = 5000.0;
     private static final double MAX_RUIDO = 150.0;
 
     public static void inspecionarPacote(DroneDTO drone) throws SecurityException {
-        // Inspeção Profunda de Pacote (DPI - simulada nos dados decifrados)
         
         StringBuilder violações = new StringBuilder();
         boolean anomaliaDetectada = false;

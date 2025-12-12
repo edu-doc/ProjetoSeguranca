@@ -20,15 +20,11 @@ public class EmissorMultiCastOeste {
 
     public static void main(String[] args) {
 
-        if (args.length < 3) {
-            System.err.println("Uso: java EmissorMultiCastOeste <P_RECEPTOR> <G_RECEPTOR> <Y_RECEPTOR>");
-            return;
-        }
 
         // Injeção de Chaves via Argumentos
-        BigInteger P_RECEPTOR = new BigInteger(args[0]);
-        BigInteger G_RECEPTOR = new BigInteger(args[1]);
-        BigInteger Y_RECEPTOR = new BigInteger(args[2]);
+        BigInteger P_RECEPTOR = new BigInteger("9865086851552036503315682554636903079707985892373600312724655915758623154281422326900625005654551209501515551132180364784669360100614782892964947832289671");
+        BigInteger G_RECEPTOR = new BigInteger("2");
+        BigInteger Y_RECEPTOR = new BigInteger("1714976399445342874895174603344547013980344827708006061751520305400433772657238699766687030490212628834276134023621660680477301272432873754479540518975126");
 
         String apiUrl = "http://localhost:8081/api/sensores/dados/" + POSICAO;
         String multicastIp = "224.0.0.1";
